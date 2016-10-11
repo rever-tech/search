@@ -14,7 +14,7 @@
         <scala.version>2.11.8</scala.version>
         <finatra.version>2.2.0</finatra.version>
 
-        <mainClass>rever.search.MainApp</mainClass>
+        <mainClass>rever.rever.search.MainApp</mainClass>
     </properties>
     <dependencies>
         <!-- Scala -->

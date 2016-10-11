@@ -1,4 +1,4 @@
-#@namespace scala rever.search.service
+#@namespace scala rever.rever.search.service
 include "UserCacheDT.thrift"
 
 service TUserCacheService {

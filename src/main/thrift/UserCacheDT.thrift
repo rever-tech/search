@@ -1,4 +1,4 @@
-#@namespace scala rever.search.domain.thrift
+#@namespace scala rever.rever.search.domain.thrift
 
 struct TUserID{
     1:string id
