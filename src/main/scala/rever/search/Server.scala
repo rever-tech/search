@@ -7,7 +7,7 @@ import com.twitter.finatra.http.routing.HttpRouter
 import com.twitter.finatra.thrift.ThriftServer
 import com.twitter.finatra.thrift.routing.ThriftRouter
 import rever.search.controller.http.SearchController
-import rever.search.module.AuthenticationFilter
+import rever.search.module.{AuthenticationFilter, DependencyModule}
 import rever.search.util.ZConfig
 
 /**
@@ -15,14 +15,15 @@ import rever.search.util.ZConfig
  **/
 object MainApp extends Server
 
-class Server extends HttpServer with ThriftServer {
+class Server extends HttpServer{
 
   override protected def defaultFinatraHttpPort: String = ZConfig.getString("server.http.port", ":8080")
 
-  override protected def defaultFinatraThriftPort: String = ZConfig.getString("server.thrift.port", ":8082")
+//  override protected def defaultFinatraThriftPort: String = ZConfig.getString("server.thrift.port", ":8082")
 
   override protected def disableAdminHttpServer: Boolean = ZConfig.getBoolean("server.admin.disable", true)
 
+  override val modules = Seq(DependencyModule)
 
   override protected def configureHttp(router: HttpRouter): Unit = {
     router.filter[CommonFilters]
@@ -30,6 +31,6 @@ class Server extends HttpServer with ThriftServer {
       .add[SearchController]
   }
 
-  override protected def configureThrift(router: ThriftRouter): Unit = {
-  }
+//  override protected def configureThrift(router: ThriftRouter): Unit = {
+//  }
 }

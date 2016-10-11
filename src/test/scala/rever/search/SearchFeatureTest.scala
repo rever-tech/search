@@ -1,10 +1,47 @@
 package rever.search
 
-import com.twitter.inject.server.{EmbeddedTwitterServer, FeatureTest}
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.scala.DefaultScalaModule
+import com.twitter.finagle.http.Status
+import com.twitter.finatra.http.EmbeddedHttpServer
+import com.twitter.inject.server.FeatureTest
+import rever.search.domain.RegisterTemplateRequest
+import rever.search.service.SearchService
 
 /**
  * Created by zkidkid on 10/11/16.
  */
-class SearchFeatureTest extends FeatureTest{
-  override protected def server: EmbeddedTwitterServer = ???
+class SearchFeatureTest extends FeatureTest {
+
+  val mapper: ObjectMapper = new ObjectMapper()
+  mapper.registerModule(DefaultScalaModule)
+
+  override protected def server = new EmbeddedHttpServer(twitterServer = new Server)
+
+  "[HTTP] Put & Search Template " should {
+    "put successful " in {
+      val tplSource =
+        """
+          {
+            "template":
+            {
+              "match":
+              {
+                "user": "{{query_string}}"
+              }
+            }
+          }
+        """
+      val registerTemplateRequest = RegisterTemplateRequest("test", tplSource)
+      server.httpPut("/template",
+        putBody = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(registerTemplateRequest),
+        andExpect = Status.Ok,
+        withJsonBody =
+          """
+            {
+              "code":"success"
+            }
+          """.stripMargin)
+    }
+  }
 }

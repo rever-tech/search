@@ -1,7 +1,9 @@
 package rever.search.service
 
 import java.net.InetAddress
+import javax.inject.Singleton
 
+import com.google.inject.Provides
 import com.twitter.util.Future
 import org.elasticsearch.action.indexedscripts.put.PutIndexedScriptResponse
 import org.elasticsearch.action.search.SearchResponse
@@ -20,7 +22,15 @@ import scala.collection.JavaConversions._
 /**
  * Created by zkidkid on 10/11/16.
  */
-class SearchService {
+trait SearchService[I, J] {
+  def registerTemplate(registerTpl: RegisterTemplateRequest): Future[I]
+
+  def search(searchTemplate: SearchRequest): Future[J]
+}
+
+@Singleton
+@Provides
+class SearchServiceImpl extends SearchService[PutIndexedScriptResponse, SearchResponse] {
   private val clusterName = ZConfig.getString("elasticsearch.clusterName", "elasticsearch")
   private val indexName = ZConfig.getString("elasticsearch.indexName", "default")
   private val servers = ZConfig.getStringList("elasticsearch.servers", List("127.0.0.1:9300"))

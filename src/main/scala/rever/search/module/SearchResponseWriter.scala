@@ -12,13 +12,12 @@ import org.elasticsearch.action.indexedscripts.put.PutIndexedScriptResponse
  */
 case class Response(code: String)
 
-object SUCCESS extends Response("success")
+object SUCCESS extends Response("succeed")
 
 object FAILED extends Response("failed")
 
 class PutIndexedScriptResponseWriter @Inject()(mapper: FinatraObjectMapper) extends MessageBodyWriter[PutIndexedScriptResponse] {
   override def write(obj: PutIndexedScriptResponse): WriterResponse = {
-    val code = if (obj != None) SUCCESS else FAILED
-    WriterResponse(MediaType.JSON_UTF_8,code)
+    WriterResponse(MediaType.JSON_UTF_8,SUCCESS)
   }
 }
