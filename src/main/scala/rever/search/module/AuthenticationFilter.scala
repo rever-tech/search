@@ -11,7 +11,7 @@ import rever.search.util.ZConfig
  */
 class AuthenticationFilter extends SimpleFilter[Request, Response] {
   private val TOKEN = "token"
-  private val TOKEN_VALUE = ZConfig.getString("security.admin.secret_key", "b07c7deb733fd52df20fc26cda23e1a0")
+  private val TOKEN_VALUE = ZConfig.getString("security.admin.secretKey", "b07c7deb733fd52df20fc26cda23e1a0")
 
   override def apply(request: Request, service: Service[Request, Response]): Future[Response] = {
 
