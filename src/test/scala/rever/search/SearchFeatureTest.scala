@@ -35,11 +35,12 @@ class SearchFeatureTest extends FeatureTest {
       val registerTemplateRequest = RegisterTemplateRequest("test", tplSource)
       server.httpPut("/template",
         putBody = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(registerTemplateRequest),
+        headers = Map("token" ->"b07c7deb733fd52df20fc26cda23e1a0"),
         andExpect = Status.Ok,
         withJsonBody =
           """
             {
-              "code":"success"
+              "code":"succeed"
             }
           """.stripMargin)
     }
