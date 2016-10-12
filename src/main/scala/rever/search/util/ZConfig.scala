@@ -56,7 +56,7 @@ object ZConfig {
   def getIsNull(s: String): Boolean = config.getIsNull(s)
 
   def hasPath(s: String): Boolean = config.hasPath(s)
-
+  
   def print(ps: PrintStream = System.out) = config.entrySet().foreach(x => {
     ps.println(x.getKey + "=" + String.valueOf(x.getValue))
   })

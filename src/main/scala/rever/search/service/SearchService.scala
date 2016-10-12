@@ -6,6 +6,7 @@ import javax.inject.Singleton
 import com.google.inject.Provides
 import com.twitter.inject.Logging
 import com.twitter.util.Future
+import com.typesafe.config.ConfigRenderOptions
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.action.admin.indices.mapping.put.PutMappingResponse
 import org.elasticsearch.action.bulk.BulkResponse
@@ -38,8 +39,9 @@ trait SearchService[I] {
 @Singleton
 @Provides
 class SearchServiceImpl extends SearchService[ActionResponse] with Logging {
-  private val clusterName = ZConfig.getString("elasticsearch.clusterName", "elasticsearch")
-  private val indexName = ZConfig.getString("elasticsearch.indexName", "default")
+
+  private val clusterName = ZConfig.getString("elasticsearch.cluster", "elasticsearch")
+  private lazy val indexName = ZConfig.getString("elasticsearch.indexName", "common-search")
   private val servers = ZConfig.getStringList("elasticsearch.servers", List("0.0.0.0:9300"))
 
   private val scriptIndex = ".scripts"
@@ -59,6 +61,28 @@ class SearchServiceImpl extends SearchService[ActionResponse] with Logging {
 
   })
 
+
+  if (!client.prepareExists(indexName).get().exists()) prepareIndex()
+
+
+  private[this] def prepareIndex(): Unit = {
+    info(s"Prepare Create Index ${indexName}")
+    val prepareIndex = client.admin().indices().prepareCreate(indexName)
+    val indexConfig = ZConfig.config.getConfig("elasticsearch.index")
+    val indexSettings = indexConfig.getObject("settings").render(ConfigRenderOptions.concise())
+    info(s"--> Index Settings $indexSettings")
+    prepareIndex.setSettings(indexSettings)
+    for (indexType <- indexConfig.getObject("mappings").keySet()) {
+      val mapping = indexConfig.getObject(s"mappings.${indexType}").render(ConfigRenderOptions.concise())
+      info(s"--> Add type ${indexType}")
+      info(s"--> With mapping ${mapping}")
+      prepareIndex.addMapping(indexType, mapping)
+    }
+    if (prepareIndex.get().isAcknowledged == false) {
+      throw new Exception("prepare index environment failed")
+    }
+  }
+
   def registerTemplate(registerTpl: RegisterTemplateRequest): Future[PutIndexedScriptResponse] = {
     client.preparePutIndexedScript(scriptType, registerTpl.tplName, registerTpl.tplSource).asyncGet()
   }
@@ -66,7 +90,7 @@ class SearchServiceImpl extends SearchService[ActionResponse] with Logging {
   def getTemplate(tplName: String): Future[GetResponse] = {
     client.prepareGet().setIndex(scriptIndex).setType(scriptType).setId(tplName).asyncGet()
   }
-  
+
   def registerMapping(types: String, mapping: String): Future[PutMappingResponse] = {
     client.admin().indices().preparePutMapping(indexName).setType(types).setSource(mapping).asyncGet()
   }

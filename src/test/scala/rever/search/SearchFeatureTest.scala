@@ -18,6 +18,7 @@ class SearchFeatureTest extends FeatureTest {
 
   override protected def server = new EmbeddedHttpServer(twitterServer = new Server)
 
+
   "[HTTP] Put & Search Template " should {
     "put successful " in {
       val tplSource =
