@@ -1,0 +1,15 @@
+language: scala
+
+branches:
+  only:
+    - master
+
+before_install:
+  - curl -O https://download.elastic.co/elasticsearch/release/org/elasticsearch/distribution/deb/elasticsearch/2.4.1/elasticsearch-2.4.1.deb && sudo dpkg -i --force-confnew elasticsearch-2.4.1.deb && sudo service elasticsearch restart
+before_script:
+  - sleep 15
+scala:
+  - 2.11.8
+
+jdk:
+  - oraclejdk8
