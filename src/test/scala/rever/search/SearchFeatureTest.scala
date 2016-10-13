@@ -4,7 +4,10 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.twitter.finagle.http.Status
 import com.twitter.finatra.http.EmbeddedHttpServer
+import com.twitter.finatra.thrift.ThriftClient
 import com.twitter.inject.server.FeatureTest
+import com.twitter.util.Future
+import rever.rever.search.service.CommonSearch
 import rever.search.domain.{IndexRequest, RegisterTemplateRequest, SearchRequest}
 
 /**
@@ -16,7 +19,7 @@ class SearchFeatureTest extends FeatureTest {
   mapper.registerModule(DefaultScalaModule)
   val writer = mapper.writerWithDefaultPrettyPrinter()
 
-  override protected def server = new EmbeddedHttpServer(twitterServer = new Server)
+  override protected def server = new EmbeddedHttpServer(twitterServer = new Server) with ThriftClient
 
   "[HTTP] SearchService " should {
     "Auto create index & type & template" in {
@@ -75,6 +78,20 @@ class SearchFeatureTest extends FeatureTest {
               "code":"succeed"
             }
           """)
+    }
+  }
+
+  "[Thrift] Client " should {
+    lazy val client = server.thriftClient[CommonSearch[Future]](clientId = "thrift-test")
+    "index data successful" in {
+      val temp = IndexRequest("tweet", "2", mapper.writeValueAsString(Map("message" -> "bill", "uuid" -> "2")))
+      import rever.search.domain.ThriftImplicit._
+      assert(client.index(temp).value)
+
+      val searchRequest = SearchRequest("search-tweet", Array("tweet"), Map("query_string" -> "bill"))
+      server.httpPost("/search",
+        postBody = writer.writeValueAsString(searchRequest),
+        andExpect = Status.Ok)
     }
   }
 }
