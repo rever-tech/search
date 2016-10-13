@@ -325,14 +325,14 @@
 
     <repositories>
         <repository>
+            <id>rever-repo</id>
+            <name>rever-repo</name>
+            <url>http://central.rever.vn/artifactory/libs-release-local</url>
+        </repository>
+        <repository>
             <id>twitter-repo</id>
             <name>twitter-repo</name>
             <url>https://maven.twttr.com</url>
-        </repository>
-        <repository>
-            <id>rever-repo</id>
-            <name>rever-rep</name>
-            <url>http://central.rever.vn</url>
         </repository>
     </repositories>
     <pluginRepositories>
