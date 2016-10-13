@@ -2,22 +2,26 @@ package rever.search.module
 
 import javax.inject.Singleton
 
-import com.google.inject.Provides
+import com.google.inject.{Guice, Provides}
+import com.twitter.finatra.http.marshalling.DefaultMessageBodyWriter
 import com.twitter.inject.TwitterModule
-import org.elasticsearch.action.ActionResponse
-import org.elasticsearch.action.indexedscripts.put.{PutIndexedScriptRequest, PutIndexedScriptResponse}
-import org.elasticsearch.action.search.SearchResponse
-import rever.search.service.{SearchService, SearchServiceImpl}
+import rever.search.service.SearchService
+
 
 /**
  * Created by zkidkid on 10/11/16.
  */
-object DependencyModule extends TwitterModule{
+object DependencyModule extends TwitterModule {
 
   @Singleton
   @Provides
-  def providesSearchService(): SearchService[ActionResponse]={
-    new SearchServiceImpl
+  def providesSearchService(): SearchService = {
+    new SearchService()
   }
-
+//
+//  override protected def configure(): Unit = {
+//    super.configure()
+//
+//    bindSingleton[DefaultMessageBodyWriter].to[SearchResponseWriter]
+//  }
 }

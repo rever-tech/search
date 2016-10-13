@@ -7,7 +7,6 @@ import com.google.inject.Provides
 import com.twitter.inject.Logging
 import com.twitter.util.Future
 import com.typesafe.config.ConfigRenderOptions
-import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.action.admin.indices.mapping.put.PutMappingResponse
 import org.elasticsearch.action.bulk.BulkResponse
 import org.elasticsearch.action.delete.DeleteResponse
@@ -30,15 +29,11 @@ import scala.collection.JavaConversions._
 /**
  * Created by zkidkid on 10/11/16.
  */
-trait SearchService[I] {
-  def registerTemplate(registerTpl: RegisterTemplateRequest): Future[I]
-
-  def search(searchTemplate: SearchRequest): Future[I]
-}
 
 @Singleton
 @Provides
-class SearchServiceImpl extends SearchService[ActionResponse] with Logging {
+class SearchService extends Logging {
+
 
   private val clusterName = ZConfig.getString("elasticsearch.cluster", "elasticsearch")
   private lazy val indexName = ZConfig.getString("elasticsearch.indexName", "common-search")
@@ -62,7 +57,10 @@ class SearchServiceImpl extends SearchService[ActionResponse] with Logging {
   })
 
 
-  if (!client.prepareExists(indexName).get().exists()) prepareIndex()
+  if (!client.admin().indices().prepareExists(indexName).get().isExists) {
+    prepareIndex()
+    prepareTemplate()
+  }
 
 
   private[this] def prepareIndex(): Unit = {
@@ -83,6 +81,19 @@ class SearchServiceImpl extends SearchService[ActionResponse] with Logging {
     }
   }
 
+  private[this] def prepareTemplate(): Unit = {
+    info("Prepare Init Template")
+
+    val templateConfig = ZConfig.config.getObject("elasticsearch.templates")
+
+    for (tplName <- templateConfig.keySet()) {
+      val tplSource = templateConfig.get(tplName).render(ConfigRenderOptions.concise())
+      val ret = client.preparePutIndexedScript(scriptType, tplName, tplSource).get
+      info(s"--> Added ${tplName} created: ${ret.isCreated}")
+    }
+  }
+
+
   def registerTemplate(registerTpl: RegisterTemplateRequest): Future[PutIndexedScriptResponse] = {
     client.preparePutIndexedScript(scriptType, registerTpl.tplName, registerTpl.tplSource).asyncGet()
   }
@@ -97,6 +108,10 @@ class SearchServiceImpl extends SearchService[ActionResponse] with Logging {
 
   def registerMapping(mapping: String): Future[PutMappingResponse] = {
     client.admin().indices().preparePutMapping(indexName).setSource(mapping).asyncGet()
+  }
+
+  def index(req: rever.search.domain.IndexRequest): Future[IndexResponse] = {
+    index(req.types,req.id,req.source)
   }
 
   def index(types: String, id: String, source: String): Future[IndexResponse] = {
@@ -116,7 +131,7 @@ class SearchServiceImpl extends SearchService[ActionResponse] with Logging {
   }
 
   def search(searchTemplate: SearchRequest): Future[SearchResponse] = {
-    val templateQueryBuilder = new TemplateQueryBuilder(new Template(searchTemplate.tplName, ScriptType.INDEXED, "mustache", null, searchTemplate.tplParams))
+    val templateQueryBuilder = new TemplateQueryBuilder(new Template(searchTemplate.name, ScriptType.INDEXED, "mustache", null, searchTemplate.params))
     client.prepareSearch()
       .setIndices(indexName)
       .setTypes(searchTemplate.types: _*)

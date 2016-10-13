@@ -11,7 +11,7 @@ import com.twitter.util.TimeConversions._
  */
 class SearchServiceImplTest extends FunSuite with BeforeAndAfterEach {
 
-  val searchService = new SearchServiceImpl()
+  val searchService = new SearchService
 
 
   test("testSearch") {

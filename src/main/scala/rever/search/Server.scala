@@ -2,13 +2,14 @@ package rever.search
 
 
 import com.google.inject.Module
+import com.twitter.finatra.SearchMessageBodyModule
 import com.twitter.finatra.http.HttpServer
 import com.twitter.finatra.http.filters.CommonFilters
 import com.twitter.finatra.http.routing.HttpRouter
 import com.twitter.finatra.json.modules.FinatraJacksonModule
 import com.twitter.finatra.json.utils.CamelCasePropertyNamingStrategy
 import rever.search.controller.http.SearchController
-import rever.search.module.{AuthenticationFilter, DependencyModule, PutIndexedScriptResponseWriter}
+import rever.search.module.{AuthenticationFilter, DependencyModule, SearchResponseWriter}
 import rever.search.util.ZConfig
 
 /**
@@ -28,11 +29,12 @@ class Server extends HttpServer {
 
   override def jacksonModule: Module = CustomJacksonModule
 
+  override protected def messageBodyModule: Module = SearchMessageBodyModule
+
   override protected def configureHttp(router: HttpRouter): Unit = {
     router.filter[CommonFilters]
       .filter[AuthenticationFilter]
       .add[SearchController]
-      .register[PutIndexedScriptResponseWriter]
   }
 
   //  override protected def configureThrift(router: ThriftRouter): Unit = {
