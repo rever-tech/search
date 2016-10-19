@@ -25,7 +25,7 @@ class MultiFilterFeatureTest extends FeatureTest {
       val tplSource =
         """
           {
-            "template": "{\"query\":{\"bool\":{\"filter\":[{{#term}}{{^first}},{{\/first}}{\"term\": {\"{{term_field}}\": \"{{term_value}}\"}} {{\/term}}]}}}"
+            "template": "{\"query\":{\"bool\":{\"filter\":[{{#toJson}}filters{{/toJson}}]}}}"
           }
         """
       val registerTemplateRequest = RegisterTemplateRequest(templateName, tplSource)
@@ -42,28 +42,29 @@ class MultiFilterFeatureTest extends FeatureTest {
     }
 
     "search successful" in {
-      val temp = IndexRequest("tweet", "3", mapper.writeValueAsString(
+      val temp = IndexRequest("tweet-complex", "3", mapper.writeValueAsString(
         Map(
-          "message" -> "foo",
-          "uuid" -> "3",
-          "value" -> 6
+          "key" -> "foo",
+          "string_value" -> "hello, this is a string",
+          "int_value" -> 6
         )))
       server.httpPut(path = "/index",
         putBody = writer.writeValueAsString(temp),
         andExpect = Status.Created)
 
       val searchRequest = SearchRequest(templateName, Array("tweet"),
-
         Map(
-          "term" -> Array(
+          "filters" -> Array(
             Map(
-              "term_field" -> "message",
-              "term_value" -> "foo",
-              "first" -> true
+              "term" -> Map("string_value" -> "this")
             ),
             Map(
-              "term_field" -> "_id",
-              "term_value" -> "3"
+              "range" -> Map(
+                "int_value" -> Map(
+                  "gte" -> 3,
+                  "lte" -> 6
+                )
+              )
             )
           )
         )
