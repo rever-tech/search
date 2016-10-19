@@ -35,7 +35,7 @@ class MultiFilterFeatureTest extends FeatureTest {
     }
 
     "search successful" in {
-      val searchRequest = SearchRequest("search-json", Array("tweet"),
+      val searchRequest = SearchRequest("search-json", Array(typ),
         Map(
           "filters" -> Array(
             Map(
