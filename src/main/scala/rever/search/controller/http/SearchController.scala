@@ -43,5 +43,13 @@ class SearchController @Inject()(searchService: SearchService) extends Controlle
     }
   }
 
-
+  delete("/:typ/:id") {
+    req: Request => {
+      val typ = req.params("typ")
+      val id = req.params("id")
+      for {
+        result <- searchService.delete(typ, id)
+      } yield response.ok(result)
+    }
+  }
 }

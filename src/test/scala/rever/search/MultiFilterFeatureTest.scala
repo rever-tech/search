@@ -19,40 +19,23 @@ class MultiFilterFeatureTest extends FeatureTest {
   override protected def server = new EmbeddedHttpServer(twitterServer = new Server) with ThriftClient
 
   "[HTTP] Put & Search Multiple Filter Template " should {
-    val templateName = "search-template-multi-filter"
+    val typ = "tweet-complex"
+    val id = "2"
 
-    "put successful " in {
-      val tplSource =
-        """
-          {
-            "template": "{\"query\":{\"bool\":{\"filter\":[{{#toJson}}filters{{/toJson}}]}}}"
-          }
-        """
-      val registerTemplateRequest = RegisterTemplateRequest(templateName, tplSource)
-      server.httpPut("/template",
-        putBody = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(registerTemplateRequest),
-        headers = Map("token" -> "b07c7deb733fd52df20fc26cda23e1a0"),
-        andExpect = Status.Created,
-        withJsonBody =
-          """
-            {
-              "code":"succeed"
-            }
-          """)
-    }
-
-    "search successful" in {
-      val temp = IndexRequest("tweet-complex", "3", mapper.writeValueAsString(
+    "put successful" in {
+      val temp = IndexRequest(typ, id, mapper.writeValueAsString(
         Map(
           "key" -> "foo",
           "string_value" -> "hello, this is a string",
-          "int_value" -> 6
+          "int_value" -> 4
         )))
       server.httpPut(path = "/index",
         putBody = writer.writeValueAsString(temp),
         andExpect = Status.Created)
+    }
 
-      val searchRequest = SearchRequest(templateName, Array("tweet"),
+    "search successful" in {
+      val searchRequest = SearchRequest("search-json", Array("tweet"),
         Map(
           "filters" -> Array(
             Map(
@@ -61,8 +44,8 @@ class MultiFilterFeatureTest extends FeatureTest {
             Map(
               "range" -> Map(
                 "int_value" -> Map(
-                  "gte" -> 3,
-                  "lte" -> 6
+                  "gte" -> 1,
+                  "lte" -> 4
                 )
               )
             )
@@ -73,6 +56,13 @@ class MultiFilterFeatureTest extends FeatureTest {
       server.httpPost("/search",
         postBody = writer.writeValueAsString(searchRequest),
         andExpect = Status.Ok)
+    }
+
+    "delete successful" in {
+      server.httpDelete(
+        path = "/" + typ + "/" +id,
+        andExpect = Status.Ok
+      )
     }
   }
 }
