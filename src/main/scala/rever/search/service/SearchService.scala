@@ -14,17 +14,21 @@ import org.elasticsearch.action.get.GetResponse
 import org.elasticsearch.action.index.IndexResponse
 import org.elasticsearch.action.indexedscripts.put.PutIndexedScriptResponse
 import org.elasticsearch.action.search.SearchResponse
+import org.elasticsearch.action.suggest.SuggestResponse
 import org.elasticsearch.client.transport.TransportClient
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.common.transport.InetSocketTransportAddress
 import org.elasticsearch.index.query.TemplateQueryBuilder
 import org.elasticsearch.script.ScriptService.ScriptType
 import org.elasticsearch.script.Template
+import org.elasticsearch.search.suggest.SuggestBuilders
+import org.elasticsearch.search.suggest.completion.CompletionSuggestionBuilder
 import rever.client4s.Elasticsearch._
-import rever.search.domain.{RegisterTemplateRequest, SearchRequest}
+import rever.search.domain.{RegisterTemplateRequest, SearchRequest, SuggestRequest}
 import rever.search.util.ZConfig
 
 import scala.collection.JavaConversions._
+import scala.collection.mutable
 
 /**
  * Created by zkidkid on 10/11/16.
@@ -41,7 +45,7 @@ class SearchService extends Logging {
 
   private val scriptIndex = ".scripts"
   private val scriptType = "mustache"
-
+  private val mapCompletion = new mutable.HashMap[String, CompletionSuggestionBuilder]()
   private val settings = Settings.builder()
     .put("cluster.name", clusterName)
     .put("client.transport.sniff", ZConfig.getBoolean("elasticsearch.sniff", false))
@@ -55,11 +59,17 @@ class SearchService extends Logging {
     client.addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName(hostAndPort(0)), hostAndPort(1).toInt))
 
   })
+  val isIndexExist = client.admin().indices().prepareExists(indexName).get().isExists
+  val deleteIfExist = ZConfig.getBoolean("elasticsearch.deleteIfExist", false)
+  if (isIndexExist && deleteIfExist) {
+    client.admin().indices().prepareDelete(indexName).get()
+    Thread.sleep(1000)
+  }
 
-
-  if (!client.admin().indices().prepareExists(indexName).get().isExists) {
+  if (deleteIfExist || !isIndexExist) {
     prepareIndex()
     prepareTemplate()
+    prepareCompletion()
   }
 
 
@@ -93,6 +103,17 @@ class SearchService extends Logging {
     }
   }
 
+  private[this] def prepareCompletion(): Unit = {
+    info("Prepare Completion")
+    val completionConfig = ZConfig.config.getObject("elasticsearch.autocompletion")
+    for (completionName <- completionConfig.keySet()) {
+      info(s"--> Add ${completionName} template")
+      val field = ZConfig.getString(s"elasticsearch.autocompletion.${completionName}.field")
+      val builder = SuggestBuilders.completionSuggestion(completionName).field(field)
+      mapCompletion.add(completionName, builder)
+    }
+  }
+
 
   def registerTemplate(registerTpl: RegisterTemplateRequest): Future[PutIndexedScriptResponse] = {
     client.preparePutIndexedScript(scriptType, registerTpl.tplName, registerTpl.tplSource).asyncGet()
@@ -111,7 +132,7 @@ class SearchService extends Logging {
   }
 
   def index(req: rever.search.domain.IndexRequest): Future[IndexResponse] = {
-    index(req.types,req.id,req.source)
+    index(req.types, req.id, req.source)
   }
 
   def index(types: String, id: String, source: String): Future[IndexResponse] = {
@@ -137,6 +158,19 @@ class SearchService extends Logging {
       .setTypes(searchTemplate.types: _*)
       .setQuery(templateQueryBuilder)
       .asyncGet()
+  }
+
+  def autocomplete(suggestRequest: SuggestRequest): Future[SuggestResponse] = {
+    val builder = client.prepareSuggest(indexName)
+    for (suggest <- suggestRequest.suggests) {
+      mapCompletion.get(suggest.name) match {
+        case None => throw new UnsupportedOperationException(s"Unsupported ${completionName}")
+        case Some(tpl) => {
+          builder.addSuggestion(tpl.text(suggest.text))
+        }
+      }
+    }
+    builder.asyncGet()
   }
 
 
