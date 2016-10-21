@@ -8,6 +8,7 @@ import com.twitter.inject.Logging
 import com.twitter.util.Future
 import com.typesafe.config.ConfigRenderOptions
 import org.elasticsearch.action.admin.indices.mapping.put.PutMappingResponse
+import org.elasticsearch.action.admin.indices.refresh.RefreshResponse
 import org.elasticsearch.action.bulk.BulkResponse
 import org.elasticsearch.action.delete.DeleteResponse
 import org.elasticsearch.action.get.GetResponse
@@ -22,7 +23,6 @@ import org.elasticsearch.index.query.TemplateQueryBuilder
 import org.elasticsearch.script.ScriptService.ScriptType
 import org.elasticsearch.script.Template
 import org.elasticsearch.search.suggest.SuggestBuilders
-import org.elasticsearch.search.suggest.completion.CompletionSuggestionBuilder
 import rever.client4s.Elasticsearch._
 import rever.search.domain.{RegisterTemplateRequest, SearchRequest, SuggestRequest}
 import rever.search.util.ZConfig
@@ -45,7 +45,7 @@ class SearchService extends Logging {
 
   private val scriptIndex = ".scripts"
   private val scriptType = "mustache"
-  private val mapCompletion = new mutable.HashMap[String, CompletionSuggestionBuilder]()
+  private lazy val suggestNamAndField = new mutable.HashMap[String, String]()
   private val settings = Settings.builder()
     .put("cluster.name", clusterName)
     .put("client.transport.sniff", ZConfig.getBoolean("elasticsearch.sniff", false))
@@ -106,11 +106,10 @@ class SearchService extends Logging {
   private[this] def prepareCompletion(): Unit = {
     info("Prepare Completion")
     val completionConfig = ZConfig.config.getObject("elasticsearch.autocompletion")
+
     for (completionName <- completionConfig.keySet()) {
       info(s"--> Add ${completionName} template")
-      val field = ZConfig.getString(s"elasticsearch.autocompletion.${completionName}.field")
-      val builder = SuggestBuilders.completionSuggestion(completionName).field(field)
-      mapCompletion.add(completionName, builder)
+      suggestNamAndField.put(completionName, ZConfig.getString(s"elasticsearch.autocompletion.${completionName}.field"))
     }
   }
 
@@ -160,17 +159,21 @@ class SearchService extends Logging {
       .asyncGet()
   }
 
-  def autocomplete(suggestRequest: SuggestRequest): Future[SuggestResponse] = {
+  def suggest(suggestRequest: SuggestRequest): Future[SuggestResponse] = {
     val builder = client.prepareSuggest(indexName)
     for (suggest <- suggestRequest.suggests) {
-      mapCompletion.get(suggest.name) match {
-        case None => throw new UnsupportedOperationException(s"Unsupported ${completionName}")
-        case Some(tpl) => {
-          builder.addSuggestion(tpl.text(suggest.text))
+      suggestNamAndField.get(suggest.name) match {
+        case None => throw new UnsupportedOperationException(s"Unsupported ${suggest.name}")
+        case Some(field) => {
+          builder.addSuggestion(SuggestBuilders.completionSuggestion(suggest.name).field(field).text(suggest.text))
         }
       }
     }
     builder.asyncGet()
+  }
+
+  def refresh() : Future[RefreshResponse] = {
+    client.admin.indices().prepareRefresh(indexName).asyncGet()
   }
 
 

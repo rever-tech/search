@@ -3,7 +3,7 @@ package rever.search.controller.http
 import com.google.inject.Inject
 import com.twitter.finagle.http.Request
 import com.twitter.finatra.http.Controller
-import rever.search.domain.{IndexRequest, RegisterTemplateRequest, SearchRequest}
+import rever.search.domain.{IndexRequest, RegisterTemplateRequest, SearchRequest, SuggestRequest}
 import rever.search.service.SearchService
 
 /**
@@ -34,6 +34,13 @@ class SearchController @Inject()(searchService: SearchService) extends Controlle
       } yield response.ok(searchResponse)
     }
   }
+  post("/suggest") {
+    req: SuggestRequest => {
+      for {
+        suggestResponse <- searchService.suggest(req)
+      } yield response.ok(suggestResponse)
+    }
+  }
 
   put("/index") {
     req: IndexRequest => {
@@ -42,6 +49,12 @@ class SearchController @Inject()(searchService: SearchService) extends Controlle
       } yield response.created(indexResponse)
     }
   }
-
+  post("/refresh") {
+    req: Request => {
+      for {
+        resp <- searchService.refresh()
+      } yield response.ok()
+    }
+  }
 
 }

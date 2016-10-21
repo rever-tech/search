@@ -11,6 +11,8 @@ import org.elasticsearch.action.get.GetResponse
 import org.elasticsearch.action.index.IndexResponse
 import org.elasticsearch.action.indexedscripts.put.PutIndexedScriptResponse
 import org.elasticsearch.action.search.SearchResponse
+import org.elasticsearch.action.suggest.SuggestResponse
+import org.elasticsearch.common.xcontent.XContentFactory
 
 /**
  * Created by zkidkid on 10/11/16.
@@ -47,6 +49,14 @@ class SearchResponseWriter @Inject()(mapper: FinatraObjectMapper) extends Defaul
           }
 
           WriterResponse(JSON_UTF_8, Map("code" -> SUCCEED, "data" -> data))
+        }
+        case suggestResp: SuggestResponse => {
+          val builder = XContentFactory.jsonBuilder
+          builder.startObject
+          suggestResp.getSuggest.toXContent(builder, org.elasticsearch.common.xcontent.ToXContent.EMPTY_PARAMS)
+          builder.endObject
+
+          WriterResponse(JSON_UTF_8, Map("code" -> SUCCEED, "data" -> mapper.parse[Map[String, Any]](builder.string())))
         }
         case ex: Exception => {
           error(ex)

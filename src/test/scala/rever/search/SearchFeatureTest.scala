@@ -19,7 +19,7 @@ class SearchFeatureTest extends FeatureTest {
   mapper.registerModule(DefaultScalaModule)
   val writer = mapper.writerWithDefaultPrettyPrinter()
 
-  override protected def server = new EmbeddedHttpServer(twitterServer = new Server) with ThriftClient
+  override protected val server = new EmbeddedHttpServer(twitterServer = new Server) with ThriftClient
 
   "[HTTP] SearchService " should {
     "Auto create index & type & template" in {
@@ -42,15 +42,21 @@ class SearchFeatureTest extends FeatureTest {
     }
     "return correct data with pre-index template" in {
       val temp = IndexRequest("tweet", "1", mapper.writeValueAsString(Map("message" -> "elon", "uuid" -> "1")))
-      server.httpPut(path = "/index",
+      val resp = server.httpPut(path = "/index",
+        headers = Map("token" -> "b07c7deb733fd52df20fc26cda23e1a0"),
         putBody = writer.writeValueAsString(temp),
         andExpect = Status.Created)
 
-      val searchRequest = SearchRequest("search-tweet", Array("tweet"), Map("query_string" -> "elon"))
+      println(resp)
+
+      Thread.sleep(1000)
+
+      val searchRequest = SearchRequest("search-tweet", List("tweet"), Map("query_string" -> "elon"))
       server.httpPost("/search",
         postBody = writer.writeValueAsString(searchRequest),
         andExpect = Status.Ok)
     }
+
   }
 
   "[HTTP] Put & Search Template " should {
@@ -88,7 +94,7 @@ class SearchFeatureTest extends FeatureTest {
       import rever.search.domain.ThriftImplicit._
       assert(client.index(temp).value)
 
-      val searchRequest = SearchRequest("search-tweet", Array("tweet"), Map("query_string" -> "bill"))
+      val searchRequest = SearchRequest("search-tweet", List("tweet"), Map("query_string" -> "bill"))
       server.httpPost("/search",
         postBody = writer.writeValueAsString(searchRequest),
         andExpect = Status.Ok)
